@@ -4,6 +4,7 @@ import config
 from google.oauth2 import service_account
 from llama_index.core.llms.llm import LLM
 from llama_index.llms.anthropic import Anthropic
+from llama_index.llms.gemini import Gemini
 from llama_index.llms.openai import OpenAI
 from llama_index.llms.vertex import Vertex
 
@@ -67,21 +68,28 @@ def get_llm(**kwargs) -> LLM:
         kwargs["api_key"] = orcar_config["OPENAI_API_KEY"]
         LLM_func = OpenAI
     elif model.startswith("gemini"):
-        # Load Google Cloud credentials
-        service_account_path = orcar_config["VERTEX_SERVICE_ACCOUNT_PATH"]
+        # Check if using Google AI Studio or Vertex AI
+        if orcar_config.provider == "google-ai-studio":
+            print(f"Using Google AI Studio model: {model}")
+            kwargs["api_key"] = orcar_config["GOOGLE_AI_API_KEY"]
+            LLM_func = Gemini
+        else:
+            # Default to Vertex AI (backward compatible)
+            print(f"Using Vertex AI model: {model}")
+            service_account_path = orcar_config["VERTEX_SERVICE_ACCOUNT_PATH"]
 
-        if not os.path.exists(service_account_path):
-            raise FileNotFoundError(
-                f"Google Cloud Service Account file not found: {service_account_path}"
+            if not os.path.exists(service_account_path):
+                raise FileNotFoundError(
+                    f"Google Cloud Service Account file not found: {service_account_path}"
+                )
+
+            credentials = service_account.Credentials.from_service_account_file(
+                service_account_path
             )
 
-        credentials = service_account.Credentials.from_service_account_file(
-            service_account_path
-        )
-
-        kwargs["project"] = credentials.project_id
-        kwargs["credentials"] = credentials
-        LLM_func = Vertex
+            kwargs["project"] = credentials.project_id
+            kwargs["credentials"] = credentials
+            LLM_func = Vertex
 
     # delete orcar_config from kwargs
     if "orcar_config" in kwargs:

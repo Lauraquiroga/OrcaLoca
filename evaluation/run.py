@@ -14,12 +14,13 @@ default_args_dict = {
     "persistent": True,
     "container_name": "orcar_swe_bench_run_ctr",
     "split": "test",
-    "max_retry": 2,
+    "max_retry": 0,
     # "filter_instance": ".*",
     "filter_instance": "^(astropy__astropy-6938)$",
     "final_stage": "search",
     "redirect_log": True,
-    "cfg_path": "../key.cfg",
+    "cfg_path": "./key.cfg",
+    "provider": None,
 }
 
 
@@ -91,6 +92,11 @@ def parse_inputs() -> argparse.Namespace:
         default=default_args_dict["cfg_path"],
         help=f"The cfg path",
     )
+    parser.add_argument(
+        "--provider",
+        default=default_args_dict["provider"],
+        help="The LLM provider (e.g., 'google-ai-studio' for Gemini via Google AI Studio)",
+    )
     args = parser.parse_args()
     # Conver args.instance_ids to args.filter_instance
     args.filter_instance = (
@@ -127,7 +133,7 @@ def stop_container_by_name(container_name):
 
 def main():
     args = parse_inputs()
-    cfg = Config(args.cfg_path)
+    cfg = Config(args.cfg_path, provider=args.provider)
     llm = get_llm(model=args.model, max_tokens=4096, orcar_config=cfg)
     ds = load_filter_hf_dataset(args)
 
@@ -154,7 +160,7 @@ def main():
         agent.run(dict(inst))
     output_insts.extend(agent.output_insts.copy())
 
-    for current_retry in range(args.max_retry):
+    for current_retry in range(int(args.max_retry)):
         ds = ds.filter(
             input_columns=["instance_id"],
             function=lambda x, output_insts=output_insts: x not in output_insts,

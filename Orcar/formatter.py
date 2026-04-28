@@ -16,6 +16,7 @@ from llama_index.core.bridge.pydantic import BaseModel
 from llama_index.core.llms.llm import LLM
 from llama_index.core.tools import BaseTool
 from llama_index.llms.anthropic import Anthropic
+from llama_index.llms.gemini import Gemini
 from llama_index.llms.openai import OpenAI
 from llama_index.llms.vertex import Vertex
 from vertexai.preview.generative_models import GenerativeModel
@@ -99,6 +100,22 @@ class TokenCounter:
                     return ["placeholder" for _ in range(token_len)]
 
             self.encoding = VertexEncoding(llm._client)
+            self.activate_structure_output = True
+        elif isinstance(llm, Gemini):
+            # Use the public _model attribute from llama-index-llms-gemini
+            generative_model = getattr(llm, "_model", None)
+            if generative_model is None:
+                raise Exception("Gemini LLM does not expose a _model attribute for token counting.")
+
+            class GeminiEncoding:
+                def __init__(self, client):
+                    self.client = client
+
+                def encode(self, text: str) -> List[str]:
+                    token_len = self.client.count_tokens(text).total_tokens
+                    return ["placeholder" for _ in range(token_len)]
+
+            self.encoding = GeminiEncoding(generative_model)
             self.activate_structure_output = True
         else:
             raise Exception(f"gen_config: No tokenizer for model {model}")
