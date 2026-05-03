@@ -17,6 +17,7 @@ from llama_index.core.llms.llm import LLM
 from llama_index.core.tools import BaseTool
 from llama_index.llms.anthropic import Anthropic
 from llama_index.llms.gemini import Gemini
+from llama_index.llms.ollama import Ollama 
 from llama_index.llms.openai import OpenAI
 from llama_index.llms.vertex import Vertex
 from vertexai.preview.generative_models import GenerativeModel
@@ -117,6 +118,27 @@ class TokenCounter:
 
             self.encoding = GeminiEncoding(generative_model)
             self.activate_structure_output = True
+
+        elif isinstance(llm, Ollama):
+            # Qwen2.5 uses a tiktoken-compatible tokenizer very close to cl100k_base.
+            # Approximation is fine for budget tracking
+            _OLLAMA_TIKTOKEN_MAP = {
+                "qwen":    "cl100k_base",   # Qwen2.5 family
+                "llama":   "cl100k_base",   # Llama 3
+                "mistral": "cl100k_base",
+                "gemma":   "cl100k_base",
+            }
+            model_name = llm.model.lower()
+            encoding_name = next(
+                (enc for prefix, enc in _OLLAMA_TIKTOKEN_MAP.items()
+                if model_name.startswith(prefix)),
+                "cl100k_base",               # default
+            )
+            self.encoding = tiktoken.get_encoding(encoding_name)
+            logger.info(
+                f"Ollama model '{llm.model}' has no native tokenizer API; "
+                f"approximating with tiktoken '{encoding_name}'"
+            )
         else:
             raise Exception(f"gen_config: No tokenizer for model {model}")
         logger.info(f"Found tokenizer for model '{model}'")

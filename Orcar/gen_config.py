@@ -6,6 +6,7 @@ from llama_index.core.llms.llm import LLM
 from llama_index.llms.anthropic import Anthropic
 from llama_index.llms.gemini import Gemini
 from llama_index.llms.openai import OpenAI
+from llama_index.llms.ollama import Ollama
 from llama_index.llms.vertex import Vertex
 
 from .utils import VertexAnthropicWithCredentials
@@ -20,6 +21,7 @@ class Config:
             self.file_config = dict()
         self.fallback_config = dict()
         self.fallback_config["OPENAI_API_BASE_URL"] = ""
+        self.fallback_config["OLLAMA_BASE_URL"] = "http://localhost:11434"
         self.provider = provider
 
     def __getitem__(self, index):
@@ -90,6 +92,15 @@ def get_llm(**kwargs) -> LLM:
             kwargs["project"] = credentials.project_id
             kwargs["credentials"] = credentials
             LLM_func = Vertex
+
+    elif model.startswith("qwen") or orcar_config.provider == "ollama":
+        print(f"Using Ollama model: {model}")
+        kwargs["base_url"] = orcar_config["OLLAMA_BASE_URL"]
+        kwargs["request_timeout"] = 300.0 
+        kwargs["model"]    = model          # e.g. "qwen2.5-coder:7b"
+        # Ollama needs no API key; remove any stray key if present
+        kwargs.pop("api_key", None)
+        LLM_func = Ollama
 
     # delete orcar_config from kwargs
     if "orcar_config" in kwargs:
