@@ -14,7 +14,7 @@ default_args_dict = {
     "persistent": True,
     "container_name": "orcar_swe_bench_run_ctr",
     "split": "test",
-    "max_retry": 0,
+    "max_retry": 0, #2
     # "filter_instance": ".*",
     "filter_instance": "^(astropy__astropy-6938)$",
     "final_stage": "search",
@@ -95,7 +95,7 @@ def parse_inputs() -> argparse.Namespace:
     parser.add_argument(
         "--provider",
         default=default_args_dict["provider"],
-        help="The LLM provider (e.g., 'google-ai-studio' for Gemini via Google AI Studio)",
+        help="The LLM provider (e.g., vertexanthropic, ollama)",
     )
     args = parser.parse_args()
     # Conver args.instance_ids to args.filter_instance
