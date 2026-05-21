@@ -7,6 +7,8 @@ import sys
 import traceback
 from typing import Dict, List, Tuple
 
+from json_repair import repair_json
+
 from llama_index.core.types import BaseOutputParser
 
 from .log_utils import get_logger
@@ -121,6 +123,66 @@ def load_with_escape(input_text: str) -> dict:
 
     return data
 
+def load_llm_json(input_text: str) -> dict:
+    """
+    Robust JSON loader for imperfect LLM outputs.
+    Sequential recovery pipeline: strict parse -> candidate extraction -> repair.
+    """
+    # step 1: attempt to parse directly
+    try:
+        return json.loads(input_text)
+
+    except json.JSONDecodeError as e:
+        logger.warning(f"Strict JSON parse failed: {e}")
+
+    # step 2: extract JSON candidate
+    candidate = extract_json_candidate(input_text)
+
+    logger.info("Extracted JSON candidate")
+
+    try:
+        return json.loads(candidate)
+
+    except json.JSONDecodeError as e:
+        logger.warning(f"Candidate JSON parse failed: {e}")
+
+    # step 3: repair malformed json
+    try:
+        repaired = repair_json(candidate)
+
+        logger.info("Successfully repaired JSON")
+
+        return json.loads(repaired)
+
+    except Exception as e:
+        logger.warning(f"json_repair failed: {e}")
+
+    logger.error("Could not parse LLM output")
+    logger.error(f"Raw output:\n{input_text}")
+
+    raise ValueError(
+        "Failed to parse LLM JSON output after all recovery attempts."
+    )
+
+def extract_json_candidate(text: str) -> str:
+    """
+    Extract the largest JSON-like object or array from text.
+    """
+
+    # Try object first
+    obj_match = re.search(r"\{.*\}", text, re.DOTALL)
+
+    if obj_match:
+        return obj_match.group(0)
+
+    # Try array
+    arr_match = re.search(r"\[.*\]", text, re.DOTALL)
+
+    if arr_match:
+        return arr_match.group(0)
+
+    return text
+
 
 class SearchOutputParser(BaseOutputParser):
     """ReAct Output parser."""
@@ -137,7 +199,7 @@ class SearchOutputParser(BaseOutputParser):
         """Parse output from Search agent.
 
         We expect the output to be the following format:
-            "observation": "str",
+            "observation_feedback": "str",
             "potential_bug_locations": [
                 {
                     "file_path": "path/to/file",
@@ -150,7 +212,7 @@ class SearchOutputParser(BaseOutputParser):
                     "method_name": "function_name",
                 },
             ],
-            "action_lists": [
+            "new_search_actions": [
                 {
                     "action": "search_api1",
                     "action_input": {
@@ -166,36 +228,55 @@ class SearchOutputParser(BaseOutputParser):
                 },
             ]
         """
-        if "observation_feedback" in output:
-            action_list: List[SearchActionStep] = []
-            bug_list: List[BugLocations] = []
+        
+        action_list: List[SearchActionStep] = []
+        bug_list: List[BugLocations] = []
+        try:
             output = reformat_json_string(output)
-            # cast the output to SearchActionStep
-            # escape \s in the json string
 
-            json_str = load_with_escape(output)
-            observation_json = json_str["observation_feedback"]
-            # add <Observation> and </Observation> to the observation
-            observation = f"<Observation>\n{observation_json}\n</Observation>"
+            json_str = load_llm_json(output) #robust load of LLM JSON output
 
-            for bug_location in json_str["potential_bug_locations"]:
-                bug = BugLocations(
-                    file_path=bug_location["file_path"],
-                    class_name=bug_location["class_name"],
-                    method_name=bug_location["method_name"],
+        except Exception as exc:
+            raise ValueError(
+                f"Could not parse search action output: {output}"
+            ) from exc
+        
+        required_keys = [
+        "observation_feedback",
+        "potential_bug_locations",
+        "new_search_actions",
+        ]
+
+        missing = [k for k in required_keys if k not in json_str]
+
+        if missing:
+            raise ValueError(
+                f"Missing required keys: {missing}\nOutput: {output}"
+            )
+
+        # Observation (O)
+        observation_json = json_str["observation_feedback"]
+        # add <Observation> and </Observation> to the observation
+        observation = f"<Observation>\n{observation_json}\n</Observation>"
+
+        # Potential bug locations (PB)
+        for bug_location in json_str["potential_bug_locations"]:
+            bug = BugLocations(
+                file_path=bug_location["file_path"],
+                class_name=bug_location["class_name"],
+                method_name=bug_location["method_name"],
+            )
+            bug_list.append(bug)
+
+        # New search actions (SA)
+        for action in json_str["new_search_actions"]:
+            action_list.append(
+                SearchActionStep(
+                    search_action=action["action"],
+                    search_action_input=action["action_input"],
                 )
-                bug_list.append(bug)
-            for action in json_str["new_search_actions"]:
-                action_list.append(
-                    SearchActionStep(
-                        search_action=action["action"],
-                        search_action_input=action["action_input"],
-                    )
-                )
-            return observation, bug_list, action_list
-        else:
-            # raise an error if the output is not in the expected format
-            raise ValueError(f"Could not parse search action output: {output}")
+            )
+        return observation, bug_list, action_list
 
     def parse_bug_report(self, output: str) -> List[Dict[str, str]]:
         """

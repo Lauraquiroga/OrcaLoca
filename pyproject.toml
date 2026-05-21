@@ -20,6 +20,7 @@ dependencies = [
   "fsspec[http]<=2024.9.0,>=2023.1.0",
   "gdown",
   "httpx<1,>=0.23.0",
+  "json-repair>=0.30.0",
   "llama-index-core",
   "llama-index-embeddings-openai",
   "llama-index-llms-anthropic",

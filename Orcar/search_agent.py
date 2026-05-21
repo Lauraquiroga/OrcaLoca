@@ -255,13 +255,13 @@ class SearchWorker(BaseAgentWorker):
             raise ValueError("Got empty message.")
         message_content = output.message.content
         try:
-            obseravtion, potential_bugs, explore_step = (
+            observation, potential_bugs, explore_step = (
                 self._output_parser.parse_explore(message_content)
             )
             # logger.info("potential_bugs: " + str(potential_bugs))
         except Exception as exc:
             raise ValueError(f"Could not parse output: {message_content}") from exc
-        return obseravtion, potential_bugs, explore_step
+        return observation, potential_bugs, explore_step
 
     def _decode_bug_location(
         self, search_result: SearchResult
