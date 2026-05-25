@@ -243,16 +243,23 @@ def main():
     # dataset = {"output_name": "verified", "full_name": "princeton-nlp/SWE-bench_Verified"}
     # dataset = {"output_name": "common", "full_name": "SWE-bench_common"}
 
+    # For custom dataset:
+    # dataset = {"output_name": "cpcb", "full_name": "CPCB-dataset"}
+
     BASE = "../swe_bench_repos"
+    # BASE = "../cpcb_repos"
     OUTPUT_PATH = f"./dataset/{dataset['output_name']}_golden_stats.csv"
 
-    print(f"SWE Bench Repos will be looked under {BASE}")
+    print(f"Repos will be looked under {BASE}")
     print(f"Output will be written to {OUTPUT_PATH}")
 
-    # ds = load_dataset("princeton-nlp/SWE-bench_Lite")
-    ds_test = pd.DataFrame(
-        load_filter_hf_dataset_explicit(dataset["full_name"], "^(.*)$", "test")[:]
-    )
+    if dataset["full_name"] == "CPCB-dataset":
+        ds_test = pd.read_csv("../cpcb_dataset/cpcb_test.csv")
+    else:
+        # ds = load_dataset("princeton-nlp/SWE-bench_Lite")
+        ds_test = pd.DataFrame(
+            load_filter_hf_dataset_explicit(dataset["full_name"], "^(.*)$", "test")[:]
+        )
     ds_golden_stats = ds_test[["instance_id", "patch", "repo", "base_commit"]]
     tqdm.pandas()
     ds_golden_stats.insert(

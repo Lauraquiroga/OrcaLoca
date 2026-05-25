@@ -28,7 +28,7 @@ def download_golden_data(artifact_dir: str, dataset: str) -> pd.DataFrame:
     file_dir = f"{dir}/{dataset_file}"
     if not os.path.isfile(file_dir):
         print(f"Downloading {dataset_file} from google drive url {url}")
-        gdown.download(url, file_dir, quiet=False, fuzzy=True)
+        gdown.download(url, file_dir, quiet=False)
     return pd.read_csv(file_dir)
 
 
@@ -225,7 +225,7 @@ def main():
         "-f",
         "--file_path_key",
         default="file_path",
-        help=f"The directory of the output dir(agent's output)",
+        help="Key name for file path in model's output JSON (e.g., 'file_path')",
     )
     parser.add_argument(
         "-d",

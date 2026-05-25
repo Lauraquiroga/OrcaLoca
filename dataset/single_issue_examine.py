@@ -15,6 +15,7 @@ logger = get_logger(__name__)
 """
 Example Usage:
     python dataset/single_issue_examine.py --instance_id astropy__astropy-12907
+    python dataset/single_issue_examine.py --instance_id astropy__astropy-12907 --verbose 1
     python dataset/single_issue_examine.py --instance_id 'astropy__astropy-12907' --experiment_dir '~/sandbox/RAGCompiler/swe_bench_stats/experiments'
 
 """
@@ -143,7 +144,7 @@ def main():
         "--verbose",
         type=int,
         default=0,
-        help=f"The directory of SWE-bench Experiments (default: None)",
+        help=f"Output verbosity (0: default, 1: show more details)",
     )
     args = parser.parse_args()
     inst = get_instance(dataset=args.dataset, instance_id=args.instance_id)

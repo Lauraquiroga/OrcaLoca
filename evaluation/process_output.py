@@ -18,7 +18,7 @@ from Orcar.types import BugLocations
 logger = get_logger(__name__)
 
 args_dict = {
-    "model": "claude-3-5-sonnet-20241022",
+    "model": "qwen2.5-coder:32b", #update model, specify the model used to run the original pipeline -> not actually used
     "image": "sweagent/swe-agent:latest",
     "dataset": "princeton-nlp/SWE-bench_Lite",
     "persistent": True,

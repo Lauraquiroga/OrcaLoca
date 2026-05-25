@@ -92,7 +92,7 @@ def reformat_json_string(output: str) -> str:
         return output
 
 
-def load_with_escape(input_text: str) -> dict:
+def fix_escapes(input_text: str) -> dict:
     # Define the regex to match backslashes followed by non-quote characters
     pattern = r"(\\+)[^\'\"]"
 
@@ -118,15 +118,12 @@ def load_with_escape(input_text: str) -> dict:
     # Apply the regex with the replacement function
     input_text = re.sub(pattern, replace_match, input_text)
 
-    # Parse JSON
-    data = json.loads(input_text)
-
-    return data
+    return input_text
 
 def load_llm_json(input_text: str) -> dict:
     """
     Robust JSON loader for imperfect LLM outputs.
-    Sequential recovery pipeline: strict parse -> candidate extraction -> repair.
+    Sequential recovery pipeline: strict parse -> fix escapes -> repair.
     """
     # step 1: attempt to parse directly
     try:
@@ -135,23 +132,17 @@ def load_llm_json(input_text: str) -> dict:
     except json.JSONDecodeError as e:
         logger.warning(f"Strict JSON parse failed: {e}")
 
-    # step 2: extract JSON candidate
-    candidate = extract_json_candidate(input_text)
-
-    logger.info("Extracted JSON candidate")
-
+    # step 2: fix escape characters
+    candidate = fix_escapes(input_text)
     try:
         return json.loads(candidate)
 
     except json.JSONDecodeError as e:
-        logger.warning(f"Candidate JSON parse failed: {e}")
+        logger.warning(f"Escape fix failed: {e}")
 
     # step 3: repair malformed json
     try:
         repaired = repair_json(candidate)
-
-        logger.info("Successfully repaired JSON")
-
         return json.loads(repaired)
 
     except Exception as e:
@@ -163,25 +154,6 @@ def load_llm_json(input_text: str) -> dict:
     raise ValueError(
         "Failed to parse LLM JSON output after all recovery attempts."
     )
-
-def extract_json_candidate(text: str) -> str:
-    """
-    Extract the largest JSON-like object or array from text.
-    """
-
-    # Try object first
-    obj_match = re.search(r"\{.*\}", text, re.DOTALL)
-
-    if obj_match:
-        return obj_match.group(0)
-
-    # Try array
-    arr_match = re.search(r"\[.*\]", text, re.DOTALL)
-
-    if arr_match:
-        return arr_match.group(0)
-
-    return text
 
 
 class SearchOutputParser(BaseOutputParser):
