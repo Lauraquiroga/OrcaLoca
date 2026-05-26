@@ -90,6 +90,32 @@ cd evaluation
 python process_output.py
 ```
 
+## Using Custom Datasets
+
+You can run OrcaLoca with a local dataset CSV file instead of the default SWE-bench dataset. The evaluation driver `evaluation/run.py` accepts a `--dataset` argument with the `local://` prefix to load a local CSV file.
+
+Required instance fields:
+- `repo` — repository identifier in `owner__repo` format
+- `instance_id` — unique instance id
+- `base_commit` — git commit hash used to reset the repo
+- `patch` — gold patch (string)
+- `problem_statement` — bug description
+- `version` — Python version string used by environment setup
+- `created_at` — ISO timestamp (mandatory)
+
+Optional fields (will be defaulted if missing):
+- `test_patch` — defaults to empty string
+- `hints_text` — defaults to empty string
+- `environment_setup_commit` — defaults to `base_commit`
+
+Note: `FAIL_TO_PASS` and `PASS_TO_PASS` are only required if you plan to run the repair stage; they are optional for search-only runs.
+
+Example usage:
+
+```
+python evaluation/run.py --dataset local://./data/data.csv --model qwen2.5-coder:32b
+```
+
 ### Preparing Data for Agentless Edition
 Please go through instructions in:
 1. evaluation/orcar_agentless/README.md

@@ -5,7 +5,7 @@ import docker
 
 from Orcar import OrcarAgent
 from Orcar.gen_config import Config, get_llm
-from Orcar.load_cache_dataset import load_filter_hf_dataset
+from Orcar.load_cache_dataset import load_filter_hf_dataset, load_local_dataset
 
 default_args_dict = {
     "model": "qwen2.5-coder:32b", #"claude-3-5-sonnet-20241022",
@@ -135,7 +135,13 @@ def main():
     args = parse_inputs()
     cfg = Config(args.cfg_path, provider=args.provider)
     llm = get_llm(model=args.model, max_tokens=4096, orcar_config=cfg)
-    ds = load_filter_hf_dataset(args)
+    # Support local datasets via the `local://` prefix. Example:
+    # --dataset "local://./dataset/data/data.csv"
+    if isinstance(args.dataset, str) and args.dataset.startswith("local://"):
+        local_path = args.dataset[len("local://") :]
+        ds = load_local_dataset(local_path, split=args.split)
+    else:
+        ds = load_filter_hf_dataset(args)
 
     final_stage = args.final_stage
     redirect_log = args.redirect_log

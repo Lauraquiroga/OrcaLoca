@@ -115,7 +115,11 @@ def main():
     parser_execute.add_argument(
         "--dataset",
         default=default_dataset,
-        help=f"The target dataset (default: {default_dataset})",
+        help=(
+            f"The target dataset (default: {default_dataset}). "
+            "To use a local CSV file, prefix the path with 'local://', "
+            "e.g. local://./data/data.csv"
+        ),
     )
     parser_execute.add_argument(
         "-p",

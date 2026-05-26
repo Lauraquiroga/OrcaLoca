@@ -10,5 +10,6 @@ __pycache__/
 key.cfg
 artifact/assets
 artifact/artifact
+data
 # unignore a file
 !requirements.txt

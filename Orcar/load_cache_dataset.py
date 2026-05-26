@@ -2,6 +2,8 @@ import os
 import re
 import subprocess
 from pathlib import Path
+import csv
+from datetime import datetime
 
 import datasets
 from datasets import Features, Value
@@ -114,3 +116,61 @@ def load_filter_hf_dataset_explicit(
         input_columns=["instance_id"],
         function=lambda x: bool(re.match(filter_instance, x)),
     )
+
+def load_local_dataset(path: str, split: str = None) -> datasets.arrow_dataset.Dataset:
+    """
+    Load a local dataset csv file and convert it to a HuggingFace Dataset.
+
+    Expected input: a csv file containing a list of instances (list[dict]).
+    Mandatory instance fields: repo, instance_id, base_commit, patch,
+        problem_statement, version, created_at
+    Optional fields: hints_text, environment_setup_commit (defaults to base_commit). 
+        Test-related fields test_patch, FAIL_TO_PASS and PASS_TO_PASS 
+        are optional for this loader.
+    """
+    # If a directory is passed, look for data.csv inside it
+    if os.path.isdir(path):
+        candidate = os.path.join(path, "data.csv")
+        if not os.path.exists(candidate):
+            raise FileNotFoundError(f"No data.csv found in directory {path}")
+        path = candidate
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Local dataset file not found: {path}")
+
+    instances = []
+    with open(path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            instances.append(dict(row))
+
+    processed = []
+    for inst in instances:
+        # Verify required fields
+        for req in [
+            "repo",
+            "instance_id",
+            "base_commit",
+            "patch",
+            "problem_statement",
+            "version",
+            "created_at",
+        ]:
+            if req not in inst:
+                raise ValueError(f"Instance {inst.get('instance_id','<unknown>')} missing required field '{req}'")
+
+        # Fill optional defaults
+        inst = dict(inst)  # copy
+        inst.setdefault("test_patch", "")
+        inst.setdefault("hints_text", "")
+        inst.setdefault("environment_setup_commit", inst.get("base_commit"))
+
+        processed.append(inst)
+
+    # Convert to a HuggingFace Dataset for downstream compatibility
+    ds = datasets.Dataset.from_list(processed)
+
+    # If a split was provided, add a 'split' column for compatibility (optional)
+    if split is not None:
+        ds = ds.add_column("split", [split] * len(ds))
+    return ds
