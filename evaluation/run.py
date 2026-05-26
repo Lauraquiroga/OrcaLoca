@@ -8,7 +8,7 @@ from Orcar.gen_config import Config, get_llm
 from Orcar.load_cache_dataset import load_filter_hf_dataset
 
 default_args_dict = {
-    "model": "claude-3-5-sonnet-20241022",
+    "model": "qwen2.5-coder:32b", #"claude-3-5-sonnet-20241022",
     "image": "hejiaz/swe-agent:latest",
     "dataset": "princeton-nlp/SWE-bench_Lite",
     "persistent": True,
