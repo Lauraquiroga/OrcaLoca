@@ -104,6 +104,7 @@ class SearchManager:
         return False
 
     def _setup_graph(self):
+        #graph_builder = RepoGraph(repo_path=self.repo_path, save_log=True)
         graph_builder = RepoGraph(repo_path=self.repo_path)
         self.kg = graph_builder
         self.inverted_index = graph_builder.inverted_index

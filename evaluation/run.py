@@ -97,6 +97,12 @@ def parse_inputs() -> argparse.Namespace:
         default=default_args_dict["provider"],
         help="The LLM provider (e.g., vertexanthropic, ollama)",
     )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=None,
+        help="LLM sampling temperature (overrides default)",
+    )
     args = parser.parse_args()
     # Conver args.instance_ids to args.filter_instance
     args.filter_instance = (
@@ -134,9 +140,14 @@ def stop_container_by_name(container_name):
 def main():
     args = parse_inputs()
     cfg = Config(args.cfg_path, provider=args.provider)
-    llm = get_llm(model=args.model, max_tokens=4096, orcar_config=cfg)
+    # Build kwargs for get_llm and only include temperature when explicitly provided
+    llm_kwargs = {"model": args.model, "max_tokens": 4096, "orcar_config": cfg}
+    if hasattr(args, "temperature") and args.temperature is not None:
+        llm_kwargs["temperature"] = args.temperature
+    llm = get_llm(**llm_kwargs)
+
     # Support local datasets via the `local://` prefix. Example:
-    # --dataset "local://./dataset/data/data.csv"
+    # --dataset "local://./data/data.csv"
     if isinstance(args.dataset, str) and args.dataset.startswith("local://"):
         local_path = args.dataset[len("local://") :]
         ds = load_local_dataset(local_path, split=args.split)

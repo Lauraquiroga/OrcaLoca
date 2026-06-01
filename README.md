@@ -101,7 +101,7 @@ Required instance fields:
 - `patch` — gold patch (string)
 - `problem_statement` — bug description
 - `version` — Python version string used by environment setup
-- `created_at` — ISO timestamp (mandatory)
+- `created_at` — ISO timestamp
 
 Optional fields (will be defaulted if missing):
 - `test_patch` — defaults to empty string

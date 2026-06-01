@@ -70,6 +70,12 @@ def main():
         help=f"The LLM model (only support OpenAI now) (default: {default_model})",
     )
     parser_execute.add_argument(
+        "--temperature",
+        type=float,
+        default=None,
+        help=f"LLM sampling temperature (overrides default)",
+    )
+    parser_execute.add_argument(
         "--enable_jit",
         action="store_true",
         help=f"Should JIT be used to parallelly call function tools",
@@ -182,10 +188,13 @@ def main():
         )
 
         ds = load_filter_hf_dataset(args)
-        llm = get_llm(
-            model=args.model,
-            api_key=cfg["OPENAI_API_KEY"],
-        )
+        llm_kwargs = {
+            "model": args.model,
+            "api_key": cfg["OPENAI_API_KEY"],
+        }
+        if hasattr(args, "temperature") and args.temperature is not None:
+            llm_kwargs["temperature"] = args.temperature
+        llm = get_llm(**llm_kwargs)
         benchmark_env = BenchmarkEnv(args, ctr_bash)
         trace_analysis_agent = TraceAnalysisAgent(llm=llm, env=benchmark_env)
 

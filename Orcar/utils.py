@@ -41,15 +41,24 @@ class VertexAnthropicWithCredentials(Anthropic):
         # Optionally, you could add similar overrides for the aws_region branch if needed.
 
 
-def get_bert_embedding(text, model, tokenizer, device="cuda"):
-    """Get BERT embeddings for a given text."""
+# Globals for a single shared BERT model/tokenizer instance
+
+_BERT_MODEL_NAME = "bert-base-uncased"
+_BERT_TOKENIZER = AutoTokenizer.from_pretrained( _BERT_MODEL_NAME)
+_BERT_MODEL = AutoModel.from_pretrained(_BERT_MODEL_NAME)
+_BERT_MODEL.eval()
+
+def get_bert_embedding(text):
+    """
+    Get BERT embeddings for a given text.
+    """
+
     # Tokenize and move to device
-    inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
-    inputs = {k: v.to(device) for k, v in inputs.items()}
+    inputs = _BERT_TOKENIZER(text, padding=True, truncation=True, return_tensors="pt")
 
     # Get BERT embeddings
     with torch.no_grad():
-        outputs = model(**inputs)
+        outputs = _BERT_MODEL(**inputs)
         embeddings = outputs.last_hidden_state
 
         # Use mean pooling to get sentence embedding
@@ -66,7 +75,7 @@ def get_bert_embedding(text, model, tokenizer, device="cuda"):
 
 
 def check_observation_similarity(
-    text1, text2, threshold=0.97, model_name="bert-base-uncased"
+    text1, text2, threshold=0.97
 ):
     """
     Check similarity between two paragraphs using BERT embeddings.
@@ -75,16 +84,11 @@ def check_observation_similarity(
     Parameters:
     - text1, text2: Input paragraphs to compare
     - threshold: Optional float between 0 and 1. If None, returns only similarity score
-    - model_name: Name of the BERT model to use
     """
-    # Initialize model and tokenizer
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModel.from_pretrained(model_name).to(device)
 
-    # Get embeddings
-    emb1 = get_bert_embedding(text1, model, tokenizer, device)
-    emb2 = get_bert_embedding(text2, model, tokenizer, device)
+    # Get embeddings using the shared model/tokenizer
+    emb1 = get_bert_embedding(text1)
+    emb2 = get_bert_embedding(text2)
 
     # Calculate dot product as similarity score
     similarity = torch.dot(emb1, emb2).item()

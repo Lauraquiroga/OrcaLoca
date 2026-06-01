@@ -90,6 +90,8 @@ def get_llm(**kwargs) -> LLM:
         kwargs["base_url"] = orcar_config["OLLAMA_BASE_URL"]
         kwargs["request_timeout"] = 300.0 
         kwargs["model"]    = model          # e.g. "qwen2.5-coder:7b"
+        # Ensure deterministic sampling behavior across runs unless overridden
+        kwargs.setdefault("temperature", 0.1)
         # Ollama needs no API key; remove any stray key if present
         kwargs.pop("api_key", None)
         LLM_func = Ollama
@@ -100,6 +102,7 @@ def get_llm(**kwargs) -> LLM:
 
     try:
         llm: LLM = LLM_func(**kwargs)
+        print(f"LLM temperature: {llm.temperature}")
         _ = llm.complete("Say 'Hi'")
         return llm
     except Exception as e:
